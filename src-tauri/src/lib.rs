@@ -96,7 +96,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            let data_dir = app.path().app_data_dir().unwrap_or_else(|_| std::env::temp_dir().join("music-maker"));
+            let data_dir = app.path().app_data_dir().unwrap_or_else(|_| std::env::temp_dir().join("duet"));
             let _ = std::fs::create_dir_all(&data_dir);
             presets::load_user_presets(&data_dir);
             if let Err(e) = assistant::setup(&data_dir) {
@@ -123,7 +123,7 @@ pub fn run() {
                     window
                         .dialog()
                         .message("You have unsaved changes. Quit without saving?")
-                        .title("Music Maker")
+                        .title("Duet")
                         .kind(MessageDialogKind::Warning)
                         .buttons(MessageDialogButtons::OkCancelCustom("Quit".into(), "Cancel".into()))
                         .show(move |quit| {
@@ -174,5 +174,5 @@ pub fn run() {
             cmds::assistant_reset,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Music Maker");
+        .expect("error while running Duet");
 }

@@ -839,6 +839,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "duet"
+version = "0.1.0"
+dependencies = [
+ "cpal",
+ "hound",
+ "midir",
+ "rtrb",
+ "serde",
+ "serde_json",
+ "symphonia",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+]
+
+[[package]]
 name = "dunce"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2075,22 +2091,6 @@ name = "multiversion_no_op"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "743fb55ba31b18fb1ecef6bdc9aa2743314978ac084044301a7eee33fb99a20d"
-
-[[package]]
-name = "music-maker"
-version = "0.1.0"
-dependencies = [
- "cpal",
- "hound",
- "midir",
- "rtrb",
- "serde",
- "serde_json",
- "symphonia",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
-]
 
 [[package]]
 name = "ndk"

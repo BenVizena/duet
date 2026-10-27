@@ -1,11 +1,11 @@
 ---
 name: compose-music
-description: Compose, arrange, edit or mix music in the Music Maker DAW through its MCP tools (mcp__music-maker__*). Use for requests like "write a battle theme", "add a dark cyberpunk chord progression", "clean up the timing", "make the bass punchier", "score this video", or anything that should change the song in the running app. Also covers scoring to the project's video/images.
+description: Compose, arrange, edit or mix music in the Duet DAW through its MCP tools (mcp__duet__*). Use for requests like "write a battle theme", "add a dark cyberpunk chord progression", "clean up the timing", "make the bass punchier", "score this video", or anything that should change the song in the running app. Also covers scoring to the project's video/images.
 ---
 
-# Composing in Music Maker
+# Composing in Duet
 
-You change the song in the running Music Maker app through the `music-maker` MCP tools. Every change is one undo step, so the user can press Ctrl+Z. You can't hear audio; `render_check` is how you check your work.
+You change the song in the running Duet app through the `duet` MCP tools. Every change is one undo step, so the user can press Ctrl+Z. You can't hear audio; `render_check` is how you check your work.
 
 ## Workflow
 

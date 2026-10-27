@@ -58,7 +58,7 @@ function showWelcome() {
 
 function showUnavailable() {
   log.append(el('div', { class: 'bubble error' },
-    'Claude Code wasn\'t found on this computer. Install it from claude.com/claude-code, run "claude" once in a terminal to sign in, then restart Music Maker.'));
+    'Claude Code wasn\'t found on this computer. Install it from claude.com/claude-code, run "claude" once in a terminal to sign in, then restart Duet.'));
 }
 
 /** Minimal markdown: **bold**, `code`, and "- " bullets (text is escaped first). */

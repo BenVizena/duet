@@ -3,7 +3,7 @@
 use midir::{Ignore, MidiInput, MidiInputConnection};
 
 pub fn ports() -> Vec<String> {
-    match MidiInput::new("music-maker-list") {
+    match MidiInput::new("duet-list") {
         Ok(m) => m.ports().iter().filter_map(|p| m.port_name(p).ok()).collect(),
         Err(_) => vec![],
     }
@@ -26,7 +26,7 @@ pub fn parse(msg: &[u8]) -> Option<MidiEvent> {
 }
 
 pub fn connect(name: &str, mut on_event: impl FnMut(MidiEvent) + Send + 'static) -> Result<MidiInputConnection<()>, String> {
-    let mut input = MidiInput::new("music-maker").map_err(|e| e.to_string())?;
+    let mut input = MidiInput::new("duet").map_err(|e| e.to_string())?;
     input.ignore(Ignore::All);
     let port = input
         .ports()
@@ -36,7 +36,7 @@ pub fn connect(name: &str, mut on_event: impl FnMut(MidiEvent) + Send + 'static)
     input
         .connect(
             &port,
-            "music-maker-in",
+            "duet-in",
             move |_, msg, _| {
                 if let Some(e) = parse(msg) {
                     on_event(e);

@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "music-maker": {
+    "duet": {
       "command": "node",
-      "args": ["tools/mcp/music-maker-mcp.mjs"]
+      "args": ["tools/mcp/duet-mcp.mjs"]
     }
   }
 }

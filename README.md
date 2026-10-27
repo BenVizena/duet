@@ -1,4 +1,4 @@
-# Music Maker
+# Duet
 
 A personal DAW for Windows (Rust audio engine + Tauri v2 + plain JS UI). It covers sequencing, built-in synths, sampling, mixing, effects and recording. You can also put **videos and images on the timeline** to score music to picture, but that's entirely optional.
 
@@ -42,10 +42,10 @@ Press **?** in the app for all shortcuts.
 - **Undo:** each change is one undo step.
 - **Cost:** it uses whatever login Claude Code has. With a Pro/Max subscription, requests count toward your plan's usage limits, with no extra charge unless you've turned on extra usage. With an API key (`ANTHROPIC_API_KEY` or a Console login), they're billed as API usage. The dollar figure under each answer is Claude Code's API-equivalent estimate.
 
-**From Claude Code in this folder:** `.mcp.json` registers the `music-maker` MCP server. Approve it the first time Claude Code asks, then ask for music in plain language. The `compose-music` skill in `.claude/skills/` teaches Claude the workflow, the note notation and genre recipes. The server starts Music Maker if it isn't running. To use it from any folder:
+**From Claude Code in this folder:** `.mcp.json` registers the `duet` MCP server. Approve it the first time Claude Code asks, then ask for music in plain language. The `compose-music` skill in `.claude/skills/` teaches Claude the workflow, the note notation and genre recipes. The server starts Duet if it isn't running. To use it from any folder:
 
 ```powershell
-claude mcp add --scope user music-maker -- node <path-to-repo>\tools\mcp\music-maker-mcp.mjs
+claude mcp add --scope user duet -- node <path-to-repo>\tools\mcp\duet-mcp.mjs
 ```
 
 **Tools:**
@@ -75,7 +75,7 @@ claude mcp add --scope user music-maker -- node <path-to-repo>\tools\mcp\music-m
 
 These let Claude match the music to what's on screen and land changes on cuts.
 
-**Under the hood:** the app exposes a token-protected HTTP API on `127.0.0.1`. The port and token are in `%APPDATA%\com.benvi.musicmaker\control.json`. `tools/mcp/music-maker-mcp.mjs` is a dependency-free bridge from MCP to that API.
+**Under the hood:** the app exposes a token-protected HTTP API on `127.0.0.1`. The port and token are in `%APPDATA%\com.benvi.musicmaker\control.json`. `tools/mcp/duet-mcp.mjs` is a dependency-free bridge from MCP to that API.
 
 ## Layout
 

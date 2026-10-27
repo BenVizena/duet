@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Music Maker",
+  "productName": "Duet",
   "version": "0.1.0",
   "identifier": "com.benvi.musicmaker",
   "build": {
@@ -11,7 +11,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Music Maker",
+        "title": "Duet",
         "width": 1500,
         "height": 920,
         "minWidth": 1000,

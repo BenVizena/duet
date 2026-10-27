@@ -84,7 +84,7 @@ fn hide_window(cmd: &mut Command) {
 
 fn ffmpeg_output(args: &[String]) -> Result<std::process::Output, String> {
     if !ffmpeg_available() {
-        return Err("ffmpeg wasn't found. Install it (e.g. `winget install ffmpeg`) and restart Music Maker.".into());
+        return Err("ffmpeg wasn't found. Install it (e.g. `winget install ffmpeg`) and restart Duet.".into());
     }
     let mut cmd = Command::new("ffmpeg");
     cmd.args(args);
@@ -115,7 +115,7 @@ fn fmt_secs(s: f64) -> String {
 /// Builds the video from the media tracks (lower tracks underneath) with the mixdown as audio.
 pub fn export_video(project: &Project, mix_wav: &Path, audio_secs: f64, out: &Path) -> Result<(), String> {
     if !ffmpeg_available() {
-        return Err("ffmpeg wasn't found. Install it (e.g. `winget install ffmpeg`) and restart Music Maker.".into());
+        return Err("ffmpeg wasn't found. Install it (e.g. `winget install ffmpeg`) and restart Duet.".into());
     }
     let tempo = project.tempo_map();
     struct Item {

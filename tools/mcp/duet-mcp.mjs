@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// Music Maker MCP server (stdio, no dependencies).
+// Duet MCP server (stdio, no dependencies).
 // Exposes the running app's control API to Claude Code as tools. If the app
 // isn't running it is started automatically.
 //
-// Config: MUSIC_MAKER_CONTROL = path to control.json (default: %APPDATA%\com.benvi.musicmaker\control.json)
-//         MUSIC_MAKER_EXE     = path to music-maker.exe (optional; otherwise searched for)
+// Config: DUET_CONTROL = path to control.json (default: %APPDATA%\com.benvi.musicmaker\control.json)
+//         DUET_EXE     = path to duet.exe (optional; otherwise searched for)
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const APPDATA = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
-const CONTROL = process.env.MUSIC_MAKER_CONTROL || path.join(APPDATA, 'com.benvi.musicmaker', 'control.json');
+const CONTROL = process.env.DUET_CONTROL || path.join(APPDATA, 'com.benvi.musicmaker', 'control.json');
 
 const SONG_SPEC_HELP = `Song spec (JSON):
 { "name"?, "bpm"?, "timeSig"?: "4/4", "key"?: "A", "scale"?: "minor",
@@ -34,7 +34,7 @@ Drum names: kick snare clap hat ohat rim tom1 tom2 tom3 crash ride.`;
 const TOOLS = [
   {
     name: 'status',
-    description: 'Music Maker status: project name, playhead, whether playing, and what the user has selected in the UI (track, pattern, notes). Call this first to see what "this", "here" or "the selection" refers to.',
+    description: 'Duet status: project name, playhead, whether playing, and what the user has selected in the UI (track, pattern, notes). Call this first to see what "this", "here" or "the selection" refers to.',
     inputSchema: { type: 'object', properties: {} },
     method: 'status',
   },
@@ -173,11 +173,11 @@ async function post(ctl, method, params) {
 
 function findExe() {
   const candidates = [
-    process.env.MUSIC_MAKER_EXE,
-    path.resolve(HERE, '..', '..', 'src-tauri', 'target', 'release', 'music-maker.exe'),
-    path.join(process.env.LOCALAPPDATA || '', 'Music Maker', 'music-maker.exe'),
-    path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Music Maker', 'music-maker.exe'),
-    path.resolve(HERE, '..', '..', 'src-tauri', 'target', 'debug', 'music-maker.exe'),
+    process.env.DUET_EXE,
+    path.resolve(HERE, '..', '..', 'src-tauri', 'target', 'release', 'duet.exe'),
+    path.join(process.env.LOCALAPPDATA || '', 'Duet', 'duet.exe'),
+    path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Duet', 'duet.exe'),
+    path.resolve(HERE, '..', '..', 'src-tauri', 'target', 'debug', 'duet.exe'),
   ].filter(Boolean);
   return candidates.find((p) => fs.existsSync(p));
 }
@@ -189,7 +189,7 @@ async function call(method, params) {
     if (!ctl) throw new Error('no control file');
     return await post(ctl, method, params);
   } catch (e) {
-    if (e.name === 'TimeoutError') throw new Error('Music Maker took too long to answer.');
+    if (e.name === 'TimeoutError') throw new Error('Duet took too long to answer.');
     launching ||= launchApp();
     await launching;
     launching = null;
@@ -200,7 +200,7 @@ async function call(method, params) {
 
 async function launchApp() {
   const exe = findExe();
-  if (!exe) throw new Error('Music Maker is not running and its exe was not found. Start the app (or set MUSIC_MAKER_EXE).');
+  if (!exe) throw new Error('Duet is not running and its exe was not found. Start the app (or set DUET_EXE).');
   const before = readControl()?.pid;
   spawn(exe, [], { detached: true, stdio: 'ignore' }).unref();
   for (let i = 0; i < 60; i++) {
@@ -213,7 +213,7 @@ async function launchApp() {
       } catch { /* not up yet */ }
     }
   }
-  throw new Error('Started Music Maker but it did not respond within 30 s.');
+  throw new Error('Started Duet but it did not respond within 30 s.');
 }
 
 // ---------- MCP (JSON-RPC 2.0 over stdio, newline-delimited) ----------
@@ -230,8 +230,8 @@ async function handle(msg) {
       result: {
         protocolVersion: params?.protocolVersion || '2025-06-18',
         capabilities: { tools: {} },
-        serverInfo: { name: 'music-maker', version: '0.2.0' },
-        instructions: 'Tools to compose and edit music in the running Music Maker DAW, and to look at its optional video/images. Read the compose-music skill for the workflow and notation.',
+        serverInfo: { name: 'duet', version: '0.2.0' },
+        instructions: 'Tools to compose and edit music in the running Duet DAW, and to look at its optional video/images. Read the compose-music skill for the workflow and notation.',
       },
     });
   }

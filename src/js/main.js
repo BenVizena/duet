@@ -179,7 +179,7 @@ function updateToolbar() {
   $('sel-key').value = p.keyRoot;
   $('sel-scale').value = p.scale in SCALES ? p.scale : 'major';
   const name = `${p.name}${store.dirty ? ' •' : ''}`;
-  document.title = `${name} — Music Maker`;
+  document.title = `${name} — Duet`;
   window.__TAURI__.window?.getCurrentWindow?.().setTitle(document.title).catch(() => {});
   renderPatternList();
   renderAssetList();

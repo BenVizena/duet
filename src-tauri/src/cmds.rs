@@ -501,7 +501,7 @@ pub fn open_project(app: AppHandle, state: State<'_, AppState>, path: Option<Str
         None => match app
             .dialog()
             .file()
-            .add_filter("Music Maker project", &[project_io::EXTENSION])
+            .add_filter("Duet project", &[project_io::EXTENSION])
             .blocking_pick_file()
             .and_then(|f| f.into_path().ok())
         {
@@ -533,7 +533,7 @@ pub fn save_project(app: AppHandle, state: State<'_, AppState>, save_as: bool) -
             .dialog()
             .file()
             .set_file_name(format!("{name}.{}", project_io::EXTENSION))
-            .add_filter("Music Maker project", &[project_io::EXTENSION])
+            .add_filter("Duet project", &[project_io::EXTENSION])
             .blocking_save_file()
             .and_then(|f| f.into_path().ok())
         {
@@ -612,7 +612,7 @@ pub fn export_video(app: AppHandle, state: State<'_, AppState>) -> R<Option<Stri
     };
     let (l, r) = mix.unwrap_or_else(|| (vec![0.0; 4800], vec![0.0; 4800]));
     let secs = l.len() as f64 / export::EXPORT_SR as f64;
-    let tmp = std::env::temp_dir().join(format!("music-maker-mix-{}.wav", std::process::id()));
+    let tmp = std::env::temp_dir().join(format!("duet-mix-{}.wav", std::process::id()));
     write_wav(&tmp, &l, &r, export::EXPORT_SR, 16)?;
     let _ = app.emit("export-progress", 0.6f32);
     let res = export::export_video(&project, &tmp, secs, &path);

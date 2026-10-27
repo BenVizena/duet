@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::model::Project;
 
 pub const EXTENSION: &str = "mmproj";
+// Predates the rename to Duet; kept so existing project files still open.
 const FORMAT: &str = "music-maker-project";
 const VERSION: u32 = 1;
 
@@ -56,10 +57,10 @@ pub fn load(path: &Path) -> Result<Project, String> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("Can't read {}: {e}", path.display()))?;
     let file: ProjectFile = serde_json::from_str(&text).map_err(|e| format!("Not a valid project file: {e}"))?;
     if file.format != FORMAT {
-        return Err("Not a Music Maker project file".into());
+        return Err("Not a Duet project file".into());
     }
     if file.version > VERSION {
-        return Err("This project was saved by a newer version of Music Maker".into());
+        return Err("This project was saved by a newer version of Duet".into());
     }
     let dir = path.parent().unwrap_or(Path::new("."));
     let mut p = file.project;

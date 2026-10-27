@@ -1,5 +1,5 @@
 //! In-app AI assistant. Runs Claude Code headlessly (`claude -p`) in a small
-//! workspace that loads the Music Maker MCP server and composing skill, and
+//! workspace that loads the Duet MCP server and composing skill, and
 //! streams its replies to the UI as "assistant-event" events. Uses the user's
 //! existing Claude Code login; no API key is stored here.
 
@@ -13,7 +13,7 @@ use tauri::{AppHandle, Emitter};
 
 const CLAUDE_MD: &str = include_str!("../../tools/assistant/CLAUDE.md");
 const SKILL_MD: &str = include_str!("../../.claude/skills/compose-music/SKILL.md");
-const MCP_JS: &str = include_str!("../../tools/mcp/music-maker-mcp.mjs");
+const MCP_JS: &str = include_str!("../../tools/mcp/duet-mcp.mjs");
 
 #[derive(Default)]
 struct State {
@@ -33,14 +33,14 @@ pub fn setup(data_dir: &Path) -> Result<(), String> {
     let w = |p: PathBuf, s: &str| std::fs::write(&p, s).map_err(|e| format!("{}: {e}", p.display()));
     w(ws.join("CLAUDE.md"), CLAUDE_MD)?;
     w(skill_dir.join("SKILL.md"), SKILL_MD)?;
-    let mcp = ws.join("music-maker-mcp.mjs");
+    let mcp = ws.join("duet-mcp.mjs");
     w(mcp.clone(), MCP_JS)?;
     let cfg = json!({
         "mcpServers": {
-            "music-maker": {
+            "duet": {
                 "command": "node",
                 "args": [mcp.to_string_lossy()],
-                "env": { "MUSIC_MAKER_CONTROL": data_dir.join("control.json").to_string_lossy() }
+                "env": { "DUET_CONTROL": data_dir.join("control.json").to_string_lossy() }
             }
         }
     });
@@ -97,7 +97,7 @@ pub fn cancel() {
 }
 
 fn short_tool_name(n: &str) -> String {
-    n.strip_prefix("mcp__music-maker__").unwrap_or(n).replace('_', " ")
+    n.strip_prefix("mcp__duet__").unwrap_or(n).replace('_', " ")
 }
 
 /// Starts a request. Replies arrive as "assistant-event" events:
@@ -122,7 +122,7 @@ pub fn ask(app: AppHandle, prompt: String, context: Value) -> Result<(), String>
         ws.join("mcp.json").to_string_lossy().into_owned(),
         "--strict-mcp-config".into(),
         "--allowedTools".into(),
-        "mcp__music-maker".into(),
+        "mcp__duet".into(),
         "Skill".into(),
         "--disallowedTools".into(),
         "Bash".into(),
@@ -135,7 +135,7 @@ pub fn ask(app: AppHandle, prompt: String, context: Value) -> Result<(), String>
         args.push(s.clone());
     }
     let full_prompt = format!(
-        "<music-maker-context>\n{}\n</music-maker-context>\n\n{}",
+        "<duet-context>\n{}\n</duet-context>\n\n{}",
         serde_json::to_string_pretty(&context).unwrap_or_default(),
         prompt
     );

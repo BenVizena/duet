@@ -222,7 +222,7 @@ fn status(app: &AppHandle) -> R {
         let secs = round3(tempo.tick_to_secs(pos));
         let has_media = g.project.tracks.iter().any(|t| t.is_media() && !t.clips.is_empty());
         Ok(json!({
-            "app": "Music Maker",
+            "app": "Duet",
             "project": g.project.name,
             "path": g.path,
             "dirty": g.dirty,

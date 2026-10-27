@@ -1,11 +1,11 @@
 [package]
-name = "music-maker"
+name = "duet"
 version = "0.1.0"
 description = "Personal DAW with optional video/image sync"
 edition = "2021"
 
 [lib]
-name = "music_maker_lib"
+name = "duet_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

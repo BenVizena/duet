@@ -1,4 +1,4 @@
-# Music Maker — Project Plan
+# Duet — Project Plan
 
 A personal pattern-based digital audio workstation (DAW). It is a complete music-making tool on its own. As an optional extra, **images and videos can be placed on the timeline**, so music can be synced to video or matched to the mood of an image.
 
