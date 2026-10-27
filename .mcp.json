@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "music-maker": {
+      "command": "node",
+      "args": ["tools/mcp/music-maker-mcp.mjs"]
+    }
+  }
+}

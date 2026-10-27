@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Music Maker</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header id="toolbar">
+    <div class="tb-group">
+      <button id="btn-new" title="New project (Ctrl+N)">New</button>
+      <button id="btn-open" title="Open project (Ctrl+O)">Open</button>
+      <button id="btn-save" title="Save (Ctrl+S, Ctrl+Shift+S = Save As)">Save</button>
+      <button id="btn-export" title="Export WAV or video">Export</button>
+    </div>
+    <div class="tb-group">
+      <button id="btn-undo" class="icon" title="Undo (Ctrl+Z)">&#x21B6;</button>
+      <button id="btn-redo" class="icon" title="Redo (Ctrl+Y)">&#x21B7;</button>
+    </div>
+    <div class="tb-group transport">
+      <button id="btn-home" class="icon" title="Go to start (Home)">&#x23EE;</button>
+      <button id="btn-play" class="icon play" title="Play / Stop (Space)">&#x25B6;</button>
+      <button id="btn-stop" class="icon" title="Stop">&#x25A0;</button>
+      <button id="btn-rec" class="icon rec" title="Record armed tracks (Ctrl+R)">&#x25CF;</button>
+      <button id="btn-loop" class="toggle" title="Loop the loop region (L)">Loop</button>
+      <button id="btn-metro" class="toggle" title="Metronome">&#x2669; Click</button>
+    </div>
+    <div class="tb-group lcd">
+      <div id="pos-bars" title="Bar . beat . tick">1.1.00</div>
+      <div id="pos-time">0:00.0</div>
+    </div>
+    <div class="tb-group">
+      <label class="field">BPM <input id="inp-bpm" type="number" min="20" max="400" step="1" /></label>
+      <label class="field">Time
+        <select id="sel-timesig">
+          <option value="4/4">4/4</option><option value="3/4">3/4</option><option value="6/8">6/8</option>
+          <option value="2/4">2/4</option><option value="5/4">5/4</option><option value="7/8">7/8</option>
+          <option value="12/8">12/8</option>
+        </select>
+      </label>
+      <label class="field">Key
+        <select id="sel-key"></select>
+        <select id="sel-scale"></select>
+      </label>
+      <label class="field">Snap
+        <select id="sel-snap">
+          <option value="bar">Bar</option>
+          <option value="beat">Beat</option>
+          <option value="1/2">1/2 beat</option>
+          <option value="1/3">1/3 beat</option>
+          <option value="1/4">1/4 beat</option>
+          <option value="1/6">1/6 beat</option>
+          <option value="1/8">1/8 beat</option>
+          <option value="none">None</option>
+        </select>
+      </label>
+    </div>
+    <div class="tb-group">
+      <button id="btn-typing" class="toggle" title="Play notes with your computer keyboard (Z..M, Q..U rows; [ ] shift octave)">&#x2328; Keys</button>
+      <span id="octave-label" class="muted small" title="Typing keyboard octave ([ and ] to change)">Oct 4</span>
+      <button id="btn-settings" title="Audio & MIDI settings">Audio</button>
+      <button id="btn-ai" class="ai" title="Ask the assistant (Ctrl+K)">✨ Ask AI</button>
+      <button id="btn-help" class="icon" title="Shortcuts &amp; help">?</button>
+    </div>
+    <div class="tb-spacer"></div>
+    <div class="tb-group status">
+      <div class="meter-h" title="Master level"><div id="master-meter"></div></div>
+      <span id="cpu" class="muted" title="Audio engine load">0%</span>
+    </div>
+  </header>
+
+  <main id="main">
+    <aside id="sidebar">
+      <section>
+        <h3>Add track</h3>
+        <div class="row-buttons">
+          <button data-add-track="instrument">+ Instrument</button>
+          <button data-add-track="audio">+ Audio</button>
+          <button data-add-track="media" title="Optional: put videos or images on the timeline">+ Video/Image</button>
+        </div>
+      </section>
+      <section class="grow presets">
+        <h3 title="Click a preset to put it on the selected track; + adds it as a new track">Instrument presets</h3>
+        <input id="preset-filter" type="search" placeholder="Filter presets..." />
+        <div id="preset-list" class="list"></div>
+      </section>
+      <section class="grow">
+        <h3>Patterns <button id="btn-new-pattern" class="mini" title="New pattern">+</button></h3>
+        <div id="pattern-list" class="list"></div>
+      </section>
+      <section>
+        <h3>Files <button id="btn-import" class="mini" title="Import audio files">+ Audio</button> <button id="btn-import-media" class="mini" title="Add videos or images">+ Media</button></h3>
+        <div id="asset-list" class="list short"></div>
+      </section>
+    </aside>
+
+    <section id="playlist">
+      <div id="track-headers-wrap">
+        <div id="ruler-spacer">
+          <span class="muted small">Tracks</span>
+        </div>
+        <div id="track-headers"></div>
+      </div>
+      <div id="tl-wrap">
+        <canvas id="ruler"></canvas>
+        <canvas id="timeline"></canvas>
+        <div id="tl-empty" class="empty-hint" hidden>Add a track from the left panel, or drop audio files here.</div>
+      </div>
+    </section>
+
+    <aside id="preview" hidden>
+      <div class="preview-head">
+        <span>Video / image preview</span>
+        <button id="btn-preview-hide" class="mini" title="Hide preview">&times;</button>
+      </div>
+      <div id="preview-stage">
+        <div id="preview-empty" class="muted">No media at the playhead</div>
+      </div>
+      <div id="preview-info" class="muted small"></div>
+    </aside>
+  </main>
+
+  <div id="splitter" title="Drag to resize"></div>
+
+  <section id="bottom">
+    <nav id="tabs">
+      <button data-tab="pianoroll" class="active">Piano roll</button>
+      <button data-tab="stepseq">Step sequencer</button>
+      <button data-tab="instrument">Instrument</button>
+      <button data-tab="mixer">Mixer</button>
+      <button data-tab="assistant" class="ai-tab">✨ Assistant</button>
+      <div class="tab-spacer"></div>
+      <span id="tab-context" class="muted small"></span>
+    </nav>
+    <div id="panel-pianoroll" class="panel active">
+      <div class="panel-bar" id="pr-bar"></div>
+      <div class="canvas-host"><canvas id="pr-canvas"></canvas></div>
+    </div>
+    <div id="panel-stepseq" class="panel">
+      <div class="panel-bar" id="ss-bar"></div>
+      <div class="canvas-host"><canvas id="ss-canvas"></canvas></div>
+    </div>
+    <div id="panel-instrument" class="panel scroll"></div>
+    <div id="panel-mixer" class="panel scroll-x"></div>
+    <div id="panel-assistant" class="panel"></div>
+  </section>
+
+  <div id="menu-root"></div>
+  <div id="modal-root"></div>
+  <div id="toasts"></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

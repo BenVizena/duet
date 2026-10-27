@@ -1,0 +1,38 @@
+[package]
+name = "music-maker"
+version = "0.1.0"
+description = "Personal DAW with optional video/image sync"
+edition = "2021"
+
+[lib]
+name = "music_maker_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["protocol-asset"] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+cpal = "0.15"
+symphonia = { version = "0.5", features = ["all"] }
+hound = "3.5"
+rtrb = "0.3"
+midir = "0.10"
+
+[features]
+# Build with `--features asio` for ASIO support (requires the ASIO SDK, see cpal docs).
+asio = ["cpal/asio"]
+
+# Real-time DSP needs optimization even in dev builds, or the audio callback can't keep up.
+[profile.dev]
+opt-level = 2
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.release]
+opt-level = 3
+lto = "thin"
