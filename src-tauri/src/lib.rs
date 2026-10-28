@@ -8,6 +8,7 @@ mod edit;
 mod engine;
 mod export;
 mod history;
+mod listen;
 mod midi;
 mod model;
 mod notation;

@@ -1,11 +1,11 @@
 ---
 name: compose-music
-description: Compose, arrange, edit or mix music in the Duet DAW through its MCP tools (mcp__duet__*). Use for requests like "write a battle theme", "add a dark cyberpunk chord progression", "clean up the timing", "make the bass punchier", "score this video", or anything that should change the song in the running app. Also covers scoring to the project's video/images.
+description: Compose, arrange, edit or mix music in the Duet DAW through its MCP tools (mcp__duet__*). Use for requests like "write a battle theme", "add a dark cyberpunk chord progression", "clean up the timing", "make the bass punchier", "score this video", "build a song around my humming", or anything that should change the song in the running app. Also covers scoring to the project's video/images and building on the user's recorded takes (humming, beatboxing, tapping).
 ---
 
 # Composing in Duet
 
-You change the song in the running Duet app through the `duet` MCP tools. Every change is one undo step, so the user can press Ctrl+Z. You can't hear audio; `render_check` is how you check your work.
+You change the song in the running Duet app through the `duet` MCP tools. Every change is one undo step, so the user can press Ctrl+Z. You can't hear audio directly: `analyze_audio` turns the user's recordings into rhythm, melody, tempo and key, and `render_check` is how you check your own work.
 
 ## Workflow
 
@@ -77,6 +77,19 @@ General craft:
 - Leave the melody register (C5–C6) to one instrument at a time. Bass sits at C2–C3 and pads at C3–C5.
 - Arrange in 4- or 8-bar phrases: intro, A, B, A', and add a change (drop, fill or key lift) every 8 or 16 bars.
 - Keep the master limiter quiet: track volumes around 0.5–0.8 and master 0.7–0.9.
+
+## Building on a recording (humming, beatbox, tapping)
+
+When the user says "my recording", "what I hummed", "this take" or the project has audio clips:
+
+1. `analyze_audio` (newest take by default, or `clipId` / `track`). Read `advice` first. If it found no notes, tell the user the take is silent or too quiet and suggest checking the input device.
+2. Check the grid. The `song` grid means the take was recorded against the timeline; if `advice` says its pulse doesn't match the project tempo, call again with `bpm` set to `tempo.estimatedBpm` and use that tempo for the song. Estimates can be half or double the felt tempo; pick the one that gives sensible 8th/16th rhythms.
+3. Use what you heard:
+   - `melody.notes` is ready-made notation. Put it on a lead track as is, or cleaned up (fix flicker notes, snap to the key). Hums often sit low; transpose by octaves to fit the lead register.
+   - `rhythm.bars` are drum-grid strings (X loud, x normal, o soft). Accents usually map to kick/snare and soft hits to hats or ghost notes. Unpitched takes (`voicedPercent` < 40) are rhythm ideas.
+   - `key` suggests the key; build chords that harmonise the melody's long and accented notes. `barLevelsDb` shows where the take swells or drops, so match the arrangement's energy to it.
+   - The unquantized `bar` values in `events` reveal feel: notes consistently late on off-beats mean swing, and pushed notes mean syncopation. Keep that feel.
+4. Keep the take's own audio clip unless asked to remove it; mute it if it clashes. Tell the user what you took from the recording (tempo, key, the rhythm or motif you used).
 
 ## Scoring to the video/images (optional)
 

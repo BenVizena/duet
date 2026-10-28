@@ -112,6 +112,20 @@ setMasterVolume{volume}`,
     method: 'render_check',
   },
   {
+    name: 'analyze_audio',
+    description: 'Listen to a recorded audio take (hummed melody, beatboxed/tapped rhythm, sung line). Default: the newest take. Returns the rhythm as per-bar drum-grid strings, the melody as notation ready for a pattern, tempo estimate, key guess, per-bar loudness and every detected note with its time, bar and pitch. On "song" grid, bars/steps line up with the timeline; pass "bpm" to quantize a take that was not performed to the click (first note = bar 1).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        clipId: { type: 'number', description: 'Audio clip id (from get_project)' },
+        track: { type: ['number', 'string'], description: 'Track id or name: analyses its newest take' },
+        assetId: { type: 'number' },
+        bpm: { type: 'number', description: 'Quantize on a free grid at this tempo instead of the song grid' },
+      },
+    },
+    method: 'analyze_audio',
+  },
+  {
     name: 'save_preset',
     description: 'Save a track\'s current instrument as a user preset (shows under "My presets").',
     inputSchema: { type: 'object', properties: { name: { type: 'string' }, track: { type: ['number', 'string'] } }, required: ['name', 'track'] },

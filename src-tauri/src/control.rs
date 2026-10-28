@@ -10,6 +10,7 @@ use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::Path;
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 use std::time::Duration;
 
 use serde_json::{json, Value};
@@ -20,6 +21,7 @@ use crate::compose::{self, SongSpec};
 use crate::edit::{self, Edit};
 use crate::engine::EngineMsg;
 use crate::export;
+use crate::listen;
 use crate::model::*;
 use crate::notation;
 use crate::presets;
@@ -190,6 +192,7 @@ fn dispatch(app: &AppHandle, method: &str, p: Value) -> R {
             Ok(json!({ "saved": name }))
         }
         "render_check" => render_check(app, &p),
+        "analyze_audio" => analyze_audio(app, &p),
         "media_info" => with_inner(app, |g| Ok(json!(media_clips(&g.project)))),
         "media_frame" => media_frame(app, &p),
         "media_overview" => media_overview(app, &p),
@@ -480,6 +483,234 @@ fn render_check(app: &AppHandle, params: &Value) -> R {
         "barRmsDb": bars,
         "tracks": per_track,
         "wrote": wrote,
+    }))
+}
+
+// ---------- listening to recordings ----------
+
+struct Take {
+    track: Option<String>,
+    clip: Option<Clip>,
+    asset: AssetRef,
+}
+
+/// The audio clip to analyse: by clipId, the newest take on a track, an assetId, or the newest take overall.
+fn pick_take(p: &Project, params: &Value) -> Result<Take, String> {
+    let takes: Vec<(&Track, &Clip, u64)> = p
+        .tracks
+        .iter()
+        .flat_map(|t| t.clips.iter().map(move |c| (t, c)))
+        .filter_map(|(t, c)| match c.content {
+            ClipContent::Audio { asset_id } => Some((t, c, asset_id)),
+            _ => None,
+        })
+        .collect();
+    let found = if let Some(id) = params.get("clipId").and_then(|v| v.as_u64()) {
+        takes.iter().find(|(_, c, _)| c.id == id).copied()
+    } else if let Some(tr) = params.get("track") {
+        let tid = find_track(p, Some(tr))?.id;
+        takes.iter().filter(|(t, _, _)| t.id == tid).max_by_key(|(_, c, a)| (*a, c.id)).copied()
+    } else if let Some(id) = params.get("assetId").and_then(|v| v.as_u64()) {
+        match takes.iter().find(|(_, _, a)| *a == id) {
+            Some(x) => Some(*x),
+            None => {
+                let asset = p.asset(id).filter(|a| a.kind == AssetKind::Audio).ok_or("No audio asset with that id")?;
+                return Ok(Take { track: None, clip: None, asset: asset.clone() });
+            }
+        }
+    } else {
+        takes.iter().max_by_key(|(_, c, a)| (*a, c.id)).copied()
+    };
+    let (track, clip, asset_id) = found.ok_or_else(|| {
+        let list: Vec<Value> = takes
+            .iter()
+            .map(|(t, c, a)| json!({"track": t.name, "clipId": c.id, "assetId": a, "startBar": bar_of(p, c.start)}))
+            .collect();
+        if list.is_empty() {
+            "The project has no audio clips. Ask the user to record a take (arm an audio track with ●, Ctrl+R, Space to stop).".to_string()
+        } else {
+            format!("No matching audio clip. Audio clips: {}", json!(list))
+        }
+    })?;
+    let asset = p.asset(asset_id).ok_or("The clip's audio file is missing from the project")?;
+    Ok(Take { track: Some(track.name.clone()), clip: Some(clip.clone()), asset: asset.clone() })
+}
+
+fn round1(x: f64) -> f64 {
+    (x * 10.0).round() / 10.0
+}
+
+fn analyze_audio(app: &AppHandle, params: &Value) -> R {
+    let (proj, take, data) = with_inner(app, |g| -> Result<_, String> {
+        let take = pick_take(&g.project, params)?;
+        let data = g.assets.get(take.asset.id).cloned();
+        Ok((g.project.clone(), take, data))
+    })?;
+    let data = match data {
+        Some(d) => d,
+        None => Arc::new(crate::assets::decode_file(Path::new(&take.asset.path))?),
+    };
+    let tempo = proj.tempo_map();
+
+    // Only the part of the file the clip actually plays.
+    let (file_start, file_len, song_start) = match &take.clip {
+        Some(c) => {
+            let ss = tempo.tick_to_secs(c.start as f64);
+            (c.offset.max(0.0), tempo.tick_to_secs((c.start + c.length) as f64) - ss, Some(ss))
+        }
+        None => (0.0, data.duration(), None),
+    };
+    let s = ((file_start * data.sr as f64) as usize).min(data.frames());
+    let e = (((file_start + file_len) * data.sr as f64) as usize).min(data.frames()).max(s);
+    if e - s < data.sr as usize / 2 {
+        return Err("The clip is too short to analyse (under half a second)".into());
+    }
+    let a = listen::analyze(&data.l[s..e], &data.r[s..e], data.sr);
+
+    // Grid: the song's bars when the take sits on the timeline (it was recorded to the click),
+    // otherwise "free" at a given/estimated tempo with the first note on bar 1.
+    let user_bpm = params.get("bpm").and_then(|v| v.as_f64()).filter(|b| (30.0..=300.0).contains(b));
+    let free_bpm = user_bpm.or_else(|| song_start.is_none().then(|| a.tempo.map(|t| t.0).unwrap_or(proj.bpm)));
+    let first = a.events.first().map(|e| e.secs).unwrap_or(0.0);
+    let to_tick = |t: f64| -> f64 {
+        match (free_bpm, song_start) {
+            (Some(bpm), _) => (t - first).max(0.0) * bpm / 60.0 * PPQ as f64,
+            (None, ss) => tempo.secs_to_tick(ss.unwrap_or(0.0) + t),
+        }
+    };
+    let step = (PPQ / 4) as f64;
+    let bt = proj.bar_ticks();
+    let spb = (bt / (PPQ / 4)) as i64;
+    let max_db = a.events.iter().fold(-120f32, |m, e| m.max(e.db));
+    let q: Vec<(i64, i64, &listen::Event)> = a
+        .events
+        .iter()
+        .map(|e| {
+            let s = (to_tick(e.secs) / step).round() as i64;
+            let en = (to_tick(e.secs + e.dur) / step).round() as i64;
+            (s, en.max(s + 1), e)
+        })
+        .collect();
+    let first_bar = q.first().map(|x| x.0 / spb).unwrap_or(0);
+    let origin = first_bar * spb;
+
+    // Rhythm grid, one string per bar (X loud, x normal, o soft).
+    let mut rhythm: Vec<Vec<u8>> = vec![];
+    for (s, _, e) in &q {
+        let rel = (s - origin).max(0);
+        let (b, k) = ((rel / spb) as usize, (rel % spb) as usize);
+        while rhythm.len() <= b {
+            rhythm.push(vec![b'.'; spb as usize]);
+        }
+        let c = if e.db >= max_db - 4.0 { b'X' } else if e.db >= max_db - 15.0 { b'x' } else { b'o' };
+        let rank = |c: u8| b".oxX".iter().position(|x| *x == c).unwrap_or(0);
+        if rank(c) > rank(rhythm[b][k]) {
+            rhythm[b][k] = c;
+        }
+    }
+
+    // Melody: pitched events, monophonic, quantized to 16ths.
+    let mut notes: Vec<Note> = vec![];
+    for (s, en, e) in &q {
+        let Some(m) = e.midi else { continue };
+        let start = ((s - origin).max(0) as u64) * (PPQ / 4);
+        let end = ((en - origin).max(0) as u64) * (PPQ / 4);
+        if let Some(last) = notes.last_mut() {
+            if last.start == start {
+                continue;
+            }
+            last.length = last.length.min(start - last.start);
+        }
+        let velocity = (1.0 + (e.db - max_db) / 40.0).clamp(0.35, 1.0);
+        let velocity = (velocity * 100.0).round() / 100.0;
+        notes.push(Note { id: 0, pitch: listen::note_of(m, a.tuning_cents), start, length: end.saturating_sub(start).max(PPQ / 4), velocity });
+    }
+    let melody = (!notes.is_empty()).then(|| {
+        let end = notes.iter().map(|n| n.start + n.length).max().unwrap_or(bt);
+        let lo = notes.iter().map(|n| n.pitch).min().unwrap_or(60);
+        let hi = notes.iter().map(|n| n.pitch).max().unwrap_or(60);
+        json!({
+            "startBar": first_bar + 1, "bars": end.div_ceil(bt).max(1), "notes": notes_to_text(&notes),
+            "range": format!("{}-{}", notation::note_name(lo), notation::note_name(hi)),
+        })
+    });
+
+    // Loudness per bar (the take's dynamics / where it builds).
+    let mut bar_energy: Vec<(f64, usize)> = vec![];
+    for (i, d) in a.frame_db.iter().enumerate() {
+        let rel = to_tick(i as f64 * listen::HOP) / bt as f64 - first_bar as f64;
+        if rel < 0.0 {
+            continue;
+        }
+        let b = rel as usize;
+        if bar_energy.len() <= b {
+            bar_energy.resize(b + 1, (0.0, 0));
+        }
+        bar_energy[b].0 += 10f64.powf(*d as f64 / 10.0);
+        bar_energy[b].1 += 1;
+    }
+    let bar_levels: Vec<f64> = bar_energy.iter().map(|(s, n)| round1(10.0 * (s / (*n).max(1) as f64 + 1e-12).log10())).collect();
+
+    let events: Vec<Value> = q
+        .iter()
+        .take(400)
+        .map(|(s, _, e)| {
+            let tick = to_tick(e.secs);
+            json!({
+                "secs": round3(song_start.unwrap_or(0.0) + e.secs), "bar": round3(tick / bt as f64 + 1.0), "step": s - origin,
+                "durSecs": round3(e.dur), "note": e.midi.map(|m| notation::note_name(listen::note_of(m, a.tuning_cents))),
+                "cents": e.midi.map(|m| ((m - a.tuning_cents / 100.0 - (m - a.tuning_cents / 100.0).round()) * 100.0).round()),
+                "levelDb": round1(e.db as f64), "legato": e.pitch_change,
+            })
+        })
+        .collect();
+
+    const KEYS: [&str; 12] = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    let mut advice = vec![];
+    if a.events.is_empty() {
+        advice.push(format!("No notes found: the take seems silent or very quiet (peak {:.0} dBFS). Check the input device and record again.", a.peak_db));
+    } else if a.peak_db < -30.0 {
+        advice.push("The take is very quiet, so detection may miss soft notes.".to_string());
+    }
+    if !a.events.is_empty() && a.voiced_ratio < 0.4 {
+        advice.push("Mostly unpitched (tapping, beatbox or whisper): rely on the rhythm; the melody is rough.".to_string());
+    }
+    if let (Some((est, conf)), None) = (a.tempo, free_bpm) {
+        let ratio = est / tempo.bpm_at(0.0);
+        let near = |r: f64| (ratio / r - 1.0).abs() < 0.07;
+        if !(near(1.0) || near(2.0) || near(0.5)) {
+            advice.push(format!(
+                "The take's pulse (~{est:.0} BPM, confidence {conf:.2}) doesn't match the project tempo ({:.0} BPM). If it wasn't performed to the click, call again with bpm: {est:.0} to put it on a free grid, and set the song to that tempo.",
+                proj.bpm
+            ));
+        }
+    }
+    if a.tempo.map(|t| t.1 < 0.25).unwrap_or(false) {
+        advice.push("The tempo estimate is uncertain (loose or sparse rhythm).".to_string());
+    }
+
+    Ok(json!({
+        "take": {
+            "asset": take.asset.name, "assetId": take.asset.id, "track": take.track, "clipId": take.clip.as_ref().map(|c| c.id),
+            "startBar": take.clip.as_ref().map(|c| bar_of(&proj, c.start)), "analysedSecs": round3(a.duration),
+        },
+        "grid": match free_bpm {
+            Some(b) => format!("free: {b:.1} BPM, first note = bar 1 step 0"),
+            None => "song: bars and steps line up with the project timeline".to_string(),
+        },
+        "tempo": {"estimatedBpm": a.tempo.map(|t| round1(t.0)), "confidence": a.tempo.map(|t| round3(t.1)), "projectBpm": proj.bpm},
+        "key": a.key.map(|(r, s)| format!("{} {s}", KEYS[r as usize])),
+        "tuningCents": a.tuning_cents.round(),
+        "voicedPercent": (a.voiced_ratio * 100.0).round(),
+        "levels": {"peakDb": round1(a.peak_db as f64), "noiseFloorDb": round1(a.floor_db as f64)},
+        "rhythm": {
+            "startBar": first_bar + 1, "stepsPerBar": spb,
+            "bars": rhythm.iter().map(|b| String::from_utf8_lossy(b).into_owned()).collect::<Vec<_>>(),
+        },
+        "melody": melody,
+        "barLevelsDb": bar_levels,
+        "events": events,
+        "advice": advice,
     }))
 }
 
